@@ -59,8 +59,7 @@ function removeImage_admin_page()
         </form>
     </div>
     <?php
-    if (isset($_POST['remove_images'])) 
-    {
+    if (isset($_POST['remove_images'])) {
         remove_images();
         echo '<h3 class="p-3"> Images has been removed successfully</h3>';
     }
@@ -76,8 +75,7 @@ function remove_images()
         )
     );
     //delete thumbnail
-    foreach ($posts as $post)
-    {
+    foreach ($posts as $post) {
 
         delete_post_thumbnail($post->ID);
         $post = get_post($post->ID);
@@ -95,8 +93,7 @@ function remove_images()
 function remove_image_button_edit_post()
 {
     $screens = ['post'];
-    foreach ($screens as $screen)
-     {
+    foreach ($screens as $screen) {
         add_meta_box(
             'wporg_' . $screen . '_meta_box',
             'Remove Post Images',
@@ -129,16 +126,14 @@ add_action('save_post', 'remove_image_fun');
 function remove_image_fun($post)
 {
     global $wpdb;
-    if ($_POST['remove_images'] === 'yes') 
-    {
+    if ($_POST['remove_images'] === 'yes') {
         $post_id = get_the_ID();
         delete_post_thumbnail($post_id);
         $post = get_post($post_id);
         $content = $post->post_content;
 
         $new_content = preg_replace('/<img[^>]+>/', '', $content);
-        $wpdb->update
-        (
+        $wpdb->update(
             $wpdb->posts,
             array('post_content' => $new_content),
             array('ID' => $post_id)
@@ -149,8 +144,7 @@ function remove_image_fun($post)
 function remove_image_button_edit_media()
 {
     global $post;
-    if ($post && $post->post_type === 'attachment') 
-    {
+    if ($post && $post->post_type === 'attachment') {
     ?>
         <div class="d-flex">
             <p>Remove All Images</p>
@@ -159,7 +153,7 @@ function remove_image_button_edit_media()
                 <option value="yes">Delete all images</option>
             </select>
         </div>
-    <?php
+<?php
     }
 }
 add_action('attachment_submitbox_misc_actions', 'remove_image_button_edit_media');
@@ -167,27 +161,31 @@ add_action('attachment_submitbox_misc_actions', 'remove_image_button_edit_media'
 function remove_specific_image_fun($post)
 {
     global $wpdb;
-    if ($_POST['remove_spec_images'] === 'yes') 
-    {
+    if ($_POST['remove_spec_images'] === 'yes') {
         $attachment_id = get_the_ID();
-        $query = $wpdb->prepare
-        (
+        $query = $wpdb->prepare(
             "SELECT * FROM $wpdb->posts WHERE post_type = 'post' AND post_content LIKE %s",
             '%' . $attachment_id . '%'
         );
         $posts = $wpdb->get_results($query);
-        foreach ($posts as $post) 
-        {
-            delete_post_thumbnail($post->ID);
-            $post = get_post($post->ID);
-            $content = $post->post_content;
-            $new_content  = preg_replace('/<img[^>]+>/', '', $content);
-            $wpdb->update
-            (
-                $wpdb->posts,
-                array('post_content' => $new_content),
-                array('ID' => $post->ID)
-            );
+        foreach ($posts as $post) {
+            $attached_images = get_attached_media('image', $post->ID);
+            foreach ($attached_images as $attached_image) {
+                if ($attached_image->ID === $attachment_id) {
+
+                    delete_post_thumbnail($post->ID);
+                    $post = get_post($post->ID);
+                    $content = $post->post_content;
+                    $pattern = '/<img[^>]+class="[^"]*\bwp-image-' . $attachment_id . '\b[^"]*"[^>]*>/';
+
+                    $new_content = preg_replace($pattern, '', $content);
+                    $wpdb->update(
+                        $wpdb->posts,
+                        array('post_content' => $new_content),
+                        array('ID' => $post->ID)
+                    );
+                }
+            }
         }
     }
 }
