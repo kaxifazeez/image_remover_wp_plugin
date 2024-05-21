@@ -165,32 +165,28 @@ class Image_Remover
 
     public function remove_specific_image_fun()
     {
+        global $wpdb;
 
         $attachment_id = intval($_POST['attachment_id']);
-
+        // $attachment_id = get_the_ID();
         if ($attachment_id) {
-            global $wpdb;
-
             $query = $wpdb->prepare(
                 "SELECT * FROM $wpdb->posts WHERE post_type = 'post' AND post_content LIKE %s",
                 '%' . $attachment_id . '%'
             );
             $posts = $wpdb->get_results($query);
             foreach ($posts as $post) {
-                $attached_images = get_attached_media('image', $post->ID);
-                foreach ($attached_images as $attached_image) {
-                    if ($attached_image->ID === $attachment_id) {
-                        delete_post_thumbnail($post->ID);
-                        $post = get_post($post->ID);
-                        $content = $post->post_content;
-                        $pattern = '/<img[^>]+class="[^"]*\bwp-image-' . $attachment_id . '\b[^"]*"[^>]*>/';
-                        $new_content = preg_replace($pattern, '', $content);
-                        $wpdb->update(
-                            $wpdb->posts,
-                            array('post_content' => $new_content),
-                            array('ID' => $post->ID)
-                        );
-                    }
+
+                if (strpos($post->post_content, 'wp-image-' . $attachment_id) !== false) {
+                    delete_post_thumbnail($post->ID);
+                    $content = $post->post_content;
+                    $pattern = '/<img[^>]+class="[^"]*\bwp-image-' . $attachment_id . '\b[^"]*"[^>]*>/';
+                    $new_content = preg_replace($pattern, '', $content);
+                    $wpdb->update(
+                        $wpdb->posts,
+                        array('post_content' => $new_content),
+                        array('ID' => $post->ID)
+                    );
                 }
             }
             wp_send_json_success('Images removed successfully');
@@ -199,7 +195,6 @@ class Image_Remover
         }
     }
 }
-
 new Image_Remover();
 
 ?>
